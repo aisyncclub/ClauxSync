@@ -1,0 +1,25 @@
+{
+  "name": "clauxsync",
+  "version": "1.0.0",
+  "description": "ClauxSync MCP server with OpenAI Codex OAuth authentication",
+  "type": "module",
+  "bin": {
+    "clauxsync": "./dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsc --watch & node --watch dist/server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "express": "^4.21.2",
+    "open": "^10.1.0",
+    "openai": "^4.85.4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.0",
+    "typescript": "^5.7.3"
+  }
+}
