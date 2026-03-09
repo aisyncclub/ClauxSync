@@ -197,3 +197,122 @@ Built by **[AI Sync Club](https://portfolio.aisyncclub.com/)** — we build tool
 ## License
 
 [MIT](LICENSE)
+
+---
+
+<details>
+<summary><strong>한국어 설명 (Korean)</strong></summary>
+
+## ClauxSync란?
+
+ClauxSync는 **Claude Code**와 **OpenAI Codex**를 하나의 워크플로우로 연결하는 도구입니다. OAuth 인증으로 ChatGPT 구독만 있으면 별도 API 비용 없이 사용할 수 있습니다.
+
+### 왜 두 AI를 같이 써야 할까?
+
+| | Claude Code | OpenAI Codex |
+|---|---|---|
+| **강점** | 계획 수립, 코드 생성, 아키텍처 설계 | 심층 분석, 엣지 케이스 탐지, 코드 리뷰 |
+| **약점** | 자기 코드의 엣지 케이스를 놓칠 수 있음 | 상호작용이 느리고 반복 작업에 불리 |
+
+**Claude가 만들고, Codex가 검증합니다.** 두 AI의 장점만 쏙쏙 빼서 쓰는 워크플로우입니다.
+
+### 성능 비교
+
+| 지표 | Claude 단독 | ClauxSync (Claude + Codex) |
+|------|------------|---------------------------|
+| 버그 탐지율 | ~70% | **~92%** (이중 검증) |
+| 엣지 케이스 커버리지 | 자주 놓침 | **리뷰당 3-5개 추가 발견** |
+| 코드 리뷰 품질 | 단일 시각 | **두 개의 독립 분석 통합** |
+| 리팩토링 안전성 | 수동 검증 | **두 번째 AI가 자동 검증** |
+| 계획 완성도 | 양호 | **시니어 엔지니어급 검증** |
+
+### 주요 기능
+
+- **OpenAI Codex OAuth** — API 키 불필요, ChatGPT 구독으로 인증
+- **듀얼 AI 워크플로우** — 매 작업마다 Claude + Codex 협업
+- **추천 모드** — 리팩토링, 코드 리뷰, 디버깅, 테스트에 Codex 자동 배정
+- **Manus 스타일 계획** — 실행 계획 자동 생성 + todo.md 추적 + 반성 체크포인트
+- **Co-Commands 호환** — 공식 Codex MCP 서버와 독립 비교 패턴 지원
+- **작업 체크리스트** — 작업 단계별 AI 역할 직접 선택 가능
+
+### 빠른 시작
+
+```bash
+npx clauxsync auth    # ChatGPT 계정으로 OAuth 로그인
+npx clauxsync start   # MCP 서버 시작
+```
+
+`.claude/mcp.json`에 추가:
+
+```json
+{
+  "mcpServers": {
+    "clauxsync": {
+      "command": "npx",
+      "args": ["clauxsync", "start"]
+    },
+    "validate-plans-and-brainstorm-ideas": {
+      "command": "npx",
+      "args": ["-y", "@openai/codex", "mcp-server"]
+    }
+  }
+}
+```
+
+### 작동 방식
+
+```
+작업 시작
+    |
+모드 선택 (직접 선택 / 추천 모드)
+    |
+실행 계획 생성 → todo.md 자동 생성
+    |
++-- 에이전트 루프 ----------------------------+
+|  1. 현재 상태 분석                            |
+|  2. 실행 (Claude 또는 Codex)                 |
+|  3. 반성 + todo.md 업데이트                   |
+|  4. 다음 단계 또는 계획 조정                    |
++--------------------------------------------+
+    |
+완료 + 요약 보고
+```
+
+### 역할 배분 (추천 모드)
+
+| 작업 유형 | Claude | Codex | 이유 |
+|-----------|--------|-------|------|
+| 브레인스토밍 | 주도 | 반론(악마의 변호인) | Codex가 가정을 도전하고 사각지대 발견 |
+| 계획/설계 | 주도 | - | Claude가 구조화된 계획에 강함 |
+| 코드 작성 | 단독 | - | Claude가 대화형 코드 생성에 빠름 |
+| 리팩토링 | 작성 | **리뷰 필수** | Codex가 회귀 버그와 안티패턴 포착 |
+| 코드 리뷰 | 종합 | **필수** | 두 명의 리뷰어 > 한 명의 리뷰어 |
+| 디버깅 | 분석 | **검증 필수** | Codex가 Claude가 놓친 엣지 케이스 발견 |
+| 테스트 작성 | 작성 | **검증 필수** | Codex가 테스트 커버리지 빈틈 식별 |
+
+### MCP 도구 (8개)
+
+#### AI 협업 도구
+| 도구 | 설명 |
+|------|------|
+| `clauxsync_review` | Codex에게 코드 리뷰 요청 — 버그, 보안, 스타일 이슈 탐지 |
+| `clauxsync_debug` | Codex와 협업 디버깅 — 근본 원인 분석 및 수정 검증 |
+| `clauxsync_refactor` | Codex 검증 포함 리팩토링 — 동작 보존 확인 |
+| `clauxsync_brainstorm` | 듀얼 AI 브레인스토밍 — 악마의 변호인 반론 |
+| `clauxsync_test` | Codex를 통한 테스트 생성 및 검증 — 커버리지 빈틈 탐지 |
+
+#### 계획 및 추적 도구
+| 도구 | 설명 |
+|------|------|
+| `clauxsync_plan` | Manus 스타일 실행 계획 생성 — AI 배정 포함 단계별 계획 |
+| `clauxsync_todo_create` | todo.md 생성 — 진행 상황 추적 체크리스트 |
+| `clauxsync_todo_update` | todo.md 업데이트 — 상태 변경 및 반성 메모 기록 |
+
+### 커뮤니티
+
+**[AI Sync Club](https://portfolio.aisyncclub.com/)** 에서 만들었습니다.
+
+- [포트폴리오](https://portfolio.aisyncclub.com/)
+- [무료 자료 및 커뮤니티](https://litt.ly/aisyncclub)
+
+</details>
