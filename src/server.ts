@@ -3,12 +3,65 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import OpenAI from "openai";
 
 import { authenticate, getAccessToken, isAuthenticated } from "./auth/oauth.js";
 import { createPlan, formatPlanAsMarkdown } from "./tools/plan.js";
 import { createTodoMd, updateTodoItem } from "./tools/todo.js";
 import type { TodoItem } from "./tools/todo.js";
+
+// ---------------------------------------------------------------------------
+// Available Codex models
+// ---------------------------------------------------------------------------
+
+interface CodexModel {
+  id: string;
+  name: string;
+  description: string;
+  tier: string;
+}
+
+const AVAILABLE_MODELS: CodexModel[] = [
+  { id: "gpt-5.4", name: "GPT-5.4", description: "Flagship — strongest reasoning, coding, and agentic workflows", tier: "Pro/Plus" },
+  { id: "gpt-5.3-codex", name: "GPT-5.3 Codex", description: "Industry-leading coding model for complex software engineering", tier: "Pro/Plus" },
+  { id: "gpt-5.3-codex-spark", name: "GPT-5.3 Codex Spark", description: "Near-instant real-time coding (text-only, research preview)", tier: "Pro only" },
+  { id: "gpt-5.2-codex", name: "GPT-5.2 Codex", description: "Previous generation coding model", tier: "Pro/Plus" },
+  { id: "gpt-5-codex-mini", name: "GPT-5 Codex Mini", description: "Cost-effective — up to 4x more usage per subscription", tier: "Pro/Plus" },
+  { id: "o4-mini", name: "o4-mini", description: "Fast reasoning model (legacy)", tier: "Pro/Plus" },
+];
+
+const DEFAULT_MODEL = "gpt-5.3-codex";
+
+// Model config stored in ~/.clauxsync/config.json
+const MODEL_CONFIG_PATH = path.join(os.homedir(), ".clauxsync", "config.json");
+
+function readModelConfig(): { model: string } {
+  try {
+    if (fs.existsSync(MODEL_CONFIG_PATH)) {
+      const raw = fs.readFileSync(MODEL_CONFIG_PATH, "utf-8");
+      const config = JSON.parse(raw) as { model?: string };
+      if (config.model && AVAILABLE_MODELS.some((m) => m.id === config.model)) {
+        return { model: config.model };
+      }
+    }
+  } catch { /* ignore */ }
+  return { model: DEFAULT_MODEL };
+}
+
+function writeModelConfig(model: string): void {
+  const dir = path.dirname(MODEL_CONFIG_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  }
+  fs.writeFileSync(MODEL_CONFIG_PATH, JSON.stringify({ model }, null, 2), { mode: 0o600 });
+}
+
+function getSelectedModel(): string {
+  return process.env.CLAUXSYNC_MODEL ?? readModelConfig().model;
+}
 
 // ---------------------------------------------------------------------------
 // Codex client helper
@@ -26,11 +79,12 @@ async function getClient(): Promise<OpenAI> {
   return openaiClient;
 }
 
-async function queryCodex(systemPrompt: string, userContent: string): Promise<string> {
+async function queryCodex(systemPrompt: string, userContent: string, model?: string): Promise<string> {
   const client = await getClient();
+  const selectedModel = model ?? getSelectedModel();
 
   const response = await client.chat.completions.create({
-    model: "gpt-4",
+    model: selectedModel,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userContent },
@@ -119,12 +173,16 @@ for (const tool of TOOLS) {
         .string()
         .optional()
         .describe("Additional context such as error messages, requirements, or constraints"),
+      model: z
+        .string()
+        .optional()
+        .describe("Override Codex model for this call (e.g. 'gpt-5.4', 'gpt-5-codex-mini')"),
     },
-    async ({ code, context }) => {
+    async ({ code, context, model }) => {
       const userContent = context ? `${code}\n\n---\nContext: ${context}` : code;
 
       try {
-        const result = await queryCodex(systemPrompt, userContent);
+        const result = await queryCodex(systemPrompt, userContent, model);
         return {
           content: [{ type: "text" as const, text: result }],
         };
@@ -232,6 +290,58 @@ server.tool(
         isError: true,
       };
     }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Model selection tools
+// ---------------------------------------------------------------------------
+
+server.tool(
+  "clauxsync_models",
+  "List all available Codex models with descriptions and show which one is currently selected.",
+  {},
+  async () => {
+    const current = getSelectedModel();
+    let output = "## Available Codex Models\n\n";
+    output += "| # | Model | Description | Tier | Selected |\n";
+    output += "|---|-------|-------------|------|----------|\n";
+
+    AVAILABLE_MODELS.forEach((m, i) => {
+      const selected = m.id === current ? "**>>> ACTIVE <<<**" : "";
+      output += `| ${i + 1} | \`${m.id}\` | ${m.description} | ${m.tier} | ${selected} |\n`;
+    });
+
+    output += `\nCurrent model: \`${current}\`\n`;
+    output += `\nTo change: use \`clauxsync_set_model\` with the model ID.\n`;
+    output += `Or set env var: \`CLAUXSYNC_MODEL=gpt-5.4\``;
+
+    return {
+      content: [{ type: "text" as const, text: output }],
+    };
+  },
+);
+
+server.tool(
+  "clauxsync_set_model",
+  "Change the Codex model used for all ClauxSync AI tools. Persists across sessions.",
+  {
+    model: z.string().describe("Model ID to use (e.g. 'gpt-5.4', 'gpt-5.3-codex', 'gpt-5-codex-mini')"),
+  },
+  async ({ model }) => {
+    const found = AVAILABLE_MODELS.find((m) => m.id === model);
+    if (!found) {
+      const validIds = AVAILABLE_MODELS.map((m) => m.id).join(", ");
+      return {
+        content: [{ type: "text" as const, text: `Unknown model: "${model}"\n\nAvailable models: ${validIds}\n\nUse \`clauxsync_models\` to see full details.` }],
+        isError: true,
+      };
+    }
+
+    writeModelConfig(model);
+    return {
+      content: [{ type: "text" as const, text: `Model changed to: **${found.name}** (\`${found.id}\`)\n\n${found.description}\nTier: ${found.tier}\n\nThis setting is saved to ~/.clauxsync/config.json and persists across sessions.` }],
+    };
   },
 );
 

@@ -11,14 +11,29 @@ ClauxSync combines Claude Code + OpenAI Codex via OAuth with Manus-style task or
 
 When this skill activates:
 
-### Step 1 — Mode Selection
+### Step 1 — Model Selection
+First, call `clauxsync_models` to show available models. Present to user:
+
+**🤖 Codex 모델 선택:**
+
+| # | 모델 | 설명 | 추천 용도 |
+|---|------|------|----------|
+| 1 | `gpt-5.4` | 최신 플래그십 — 추론, 코딩, 에이전트 최강 | 복잡한 아키텍처, 대규모 리팩토링 |
+| 2 | `gpt-5.3-codex` | 코딩 특화 최강 모델 **(기본값)** | 코드 리뷰, 디버깅, 테스트 |
+| 3 | `gpt-5.3-codex-spark` | 초고속 실시간 (Pro 전용) | 빠른 반복 작업 |
+| 4 | `gpt-5-codex-mini` | 경량 — 구독당 4배 더 사용 가능 | 간단한 리뷰, 비용 절약 |
+
+> 선택하지 않으면 `gpt-5.3-codex`가 기본 사용됩니다.
+> 모델은 `clauxsync_set_model`로 변경하거나, 각 도구 호출 시 `model` 파라미터로 오버라이드 가능합니다.
+
+### Step 2 — Mode Selection
 Present to user:
 
 **🔧 모드 선택:**
 1. **직접 선택 모드** — 각 작업별 AI를 직접 지정
 2. **추천 모드** — 자동 배분 (리팩토링/리뷰/디버깅/테스트 → Codex 필수)
 
-### Step 2 — Role Assignment Table
+### Step 3 — Role Assignment Table
 
 | 작업 유형 | Claude | Codex | 추천모드 기본값 |
 |-----------|--------|-------|----------------|
@@ -30,7 +45,7 @@ Present to user:
 | 디버깅 | 분석 | **검증 필수** | Claude → Codex 검증 필수 |
 | 테스트 작성 | 작성 | **검증 필수** | Claude → Codex 검증 필수 |
 
-### Step 3 — Create Execution Plan
+### Step 4 — Create Execution Plan
 
 After mode selection, create a numbered execution plan:
 
@@ -48,7 +63,7 @@ Created: [timestamp]
 5. [ ] 완료 — 결과 제출 및 정리
 ```
 
-### Step 4 — Create todo.md
+### Step 5 — Create todo.md
 
 Create a `todo.md` file in the project root as a persistent live checklist:
 
