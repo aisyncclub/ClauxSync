@@ -7,17 +7,18 @@ import { URL, URLSearchParams } from "node:url";
 import open from "open";
 
 // ---------------------------------------------------------------------------
-// OpenAI Codex OAuth 2.0 configuration
+// OpenAI Codex OAuth 2.0 configuration (matching official Codex CLI)
 // ---------------------------------------------------------------------------
 
 const OPENAI_AUTH_BASE = "https://auth.openai.com";
-const AUTHORIZATION_ENDPOINT = `${OPENAI_AUTH_BASE}/authorize`;
+const AUTHORIZATION_ENDPOINT = `${OPENAI_AUTH_BASE}/oauth/authorize`;
 const TOKEN_ENDPOINT = `${OPENAI_AUTH_BASE}/oauth/token`;
 
-const CLIENT_ID = process.env.CLAUXSYNC_CLIENT_ID ?? "clauxsync-mcp";
-const REDIRECT_PORT = 9876;
-const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}/callback`;
-const SCOPES = "openai.codex offline_access";
+// Official OpenAI Codex public client ID
+const CLIENT_ID = process.env.CLAUXSYNC_CLIENT_ID ?? "app_EMoamEEZ73f0CkXaXp7hrann";
+const REDIRECT_PORT = 1455;
+const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}/auth/callback`;
+const SCOPES = "openid profile email offline_access";
 
 // ---------------------------------------------------------------------------
 // Token storage
@@ -99,8 +100,8 @@ export async function getAccessToken(): Promise<string> {
     throw new Error("Not authenticated. Run authenticate() first.");
   }
 
-  // Token still valid – return it directly.
-  if (Date.now() < tokens.expires_at - 60_000) {
+  // Token still valid (with 5-minute buffer) – return it directly.
+  if (Date.now() < tokens.expires_at - 5 * 60_000) {
     return tokens.access_token;
   }
 
@@ -123,6 +124,7 @@ export async function authenticate(): Promise<void> {
   const codeChallenge = generateCodeChallenge(codeVerifier);
   const state = crypto.randomBytes(16).toString("hex");
 
+  // Build the authorization URL with all required parameters
   const authUrl = new URL(AUTHORIZATION_ENDPOINT);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("client_id", CLIENT_ID);
@@ -131,12 +133,20 @@ export async function authenticate(): Promise<void> {
   authUrl.searchParams.set("state", state);
   authUrl.searchParams.set("code_challenge", codeChallenge);
   authUrl.searchParams.set("code_challenge_method", "S256");
+  // Match official Codex CLI parameters
+  authUrl.searchParams.set("id_token_add_organizations", "true");
+  authUrl.searchParams.set("codex_cli_simplified_flow", "true");
 
-  const authCode = await startCallbackServer(state);
+  // Start callback server first, then open browser
+  const codePromise = startCallbackServer(state);
 
+  console.error("[clauxsync] Opening browser for OpenAI login...");
+  await open(authUrl.toString());
+
+  const authCode = await codePromise;
   await exchangeCodeForTokens(authCode, codeVerifier);
 
-  console.error("[clauxsync] Authentication successful. Tokens stored.");
+  console.error("[clauxsync] Authentication successful. Tokens stored at", TOKEN_PATH);
 }
 
 // ---------------------------------------------------------------------------
@@ -146,7 +156,7 @@ export async function authenticate(): Promise<void> {
 function startCallbackServer(expectedState: string): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const server = http.createServer((req, res) => {
-      if (!req.url?.startsWith("/callback")) {
+      if (!req.url?.startsWith("/auth/callback")) {
         res.writeHead(404);
         res.end("Not found");
         return;
@@ -159,50 +169,40 @@ function startCallbackServer(expectedState: string): Promise<string> {
 
       if (error) {
         const desc = url.searchParams.get("error_description") ?? error;
-        res.writeHead(400, { "Content-Type": "text/html" });
-        res.end(`<html><body><h2>Authentication failed</h2><p>${desc}</p></body></html>`);
+        res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(
+          `<html><body style="font-family:system-ui;text-align:center;padding:60px">` +
+          `<h2>Authentication Failed</h2><p>${desc}</p>` +
+          `<p>Close this tab and try again.</p></body></html>`,
+        );
         server.close();
         reject(new Error(`OAuth error: ${desc}`));
         return;
       }
 
       if (!code || returnedState !== expectedState) {
-        res.writeHead(400, { "Content-Type": "text/html" });
-        res.end("<html><body><h2>Invalid callback</h2></body></html>");
+        res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(
+          `<html><body style="font-family:system-ui;text-align:center;padding:60px">` +
+          `<h2>Invalid Callback</h2><p>State mismatch or missing code.</p></body></html>`,
+        );
         server.close();
         reject(new Error("Invalid OAuth callback – state mismatch or missing code."));
         return;
       }
 
-      res.writeHead(200, { "Content-Type": "text/html" });
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       res.end(
-        "<html><body><h2>ClauxSync authenticated!</h2><p>You can close this tab.</p></body></html>",
+        `<html><body style="font-family:system-ui;text-align:center;padding:60px">` +
+        `<h2>ClauxSync Authenticated!</h2>` +
+        `<p>You can close this tab and return to your terminal.</p></body></html>`,
       );
       server.close();
       resolve(code);
     });
 
     server.listen(REDIRECT_PORT, "127.0.0.1", () => {
-      const authUrl = new URL(AUTHORIZATION_ENDPOINT);
-      authUrl.searchParams.set("response_type", "code");
-      authUrl.searchParams.set("client_id", CLIENT_ID);
-      authUrl.searchParams.set("redirect_uri", REDIRECT_URI);
-      authUrl.searchParams.set("scope", SCOPES);
-      authUrl.searchParams.set("state", expectedState);
-
-      // We already built the full URL earlier but the verifier isn't in
-      // scope here.  The caller computes challenge params independently;
-      // we build the URL with them in authenticate() and open the browser
-      // from there.  Here we just need the server running.
-      console.error("[clauxsync] Waiting for OAuth callback on port", REDIRECT_PORT);
-    });
-
-    // Open the browser from the caller (authenticate) after the server
-    // is ready.  We signal readiness by resolving through the code callback.
-    server.on("listening", () => {
-      // Build and open the authorization URL.  Note: code_challenge params
-      // are baked into the URL opened in authenticate() – that function
-      // calls us, so the browser is opened there.
+      console.error(`[clauxsync] Callback server listening on http://localhost:${REDIRECT_PORT}/auth/callback`);
     });
 
     // Timeout after 5 minutes.
