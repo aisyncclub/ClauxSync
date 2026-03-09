@@ -87,20 +87,35 @@ Done. No copy-paste. No context loss.
 
 ## Quick Start
 
+### Option 1: Install as Plugin (Recommended)
+
 ```bash
-npx clauxsync auth    # OAuth login with your ChatGPT account
-npx clauxsync start   # Start MCP server
+# Add marketplace and install
+/plugin marketplace add aisyncclub/ClauxSync
+/plugin install clauxsync@aisyncclub-clauxsync
 ```
 
-Then add ClauxSync to your Claude Code MCP config (`.claude/mcp.json`):
+### Option 2: Git Clone
+
+```bash
+git clone https://github.com/aisyncclub/ClauxSync.git
+cp -r ClauxSync/plugins/clauxsync/skills/* ~/.claude/skills/
+cp -r ClauxSync/plugins/clauxsync/commands/* ~/.claude/commands/
+```
+
+### MCP Server Setup (Required)
+
+Add the Codex MCP server to your Claude Code config:
+
+```bash
+claude mcp add validate-plans-and-brainstorm-ideas -- npx -y @openai/codex mcp-server
+```
+
+Or manually add to `.claude/mcp.json`:
 
 ```json
 {
   "mcpServers": {
-    "clauxsync": {
-      "command": "npx",
-      "args": ["clauxsync", "start"]
-    },
     "validate-plans-and-brainstorm-ideas": {
       "command": "npx",
       "args": ["-y", "@openai/codex", "mcp-server"]
@@ -109,7 +124,31 @@ Then add ClauxSync to your Claude Code MCP config (`.claude/mcp.json`):
 }
 ```
 
-That's it. Claude Code now has access to Codex through ClauxSync tools.
+That's it. Now use slash commands to start.
+
+## Slash Commands
+
+| Command | Description |
+|---------|-------------|
+| `/clauxsync` | Start a new task — model select, mode select, plan + todo.md |
+| `/cx-review` | Send code to Codex for independent review |
+| `/cx-debug` | Collaborate with Codex to debug an issue |
+| `/cx-refactor` | Refactor code with Codex validation |
+| `/cx-test` | Generate and verify tests with Codex |
+| `/cx-brainstorm` | Brainstorm with Codex as devil's advocate |
+| `/cx-models` | List and switch Codex models |
+
+### Usage Examples
+
+```
+/clauxsync                         # Full workflow setup
+/cx-review src/auth/login.ts       # Review a specific file
+/cx-debug "TypeError: undefined"   # Debug with error context
+/cx-refactor src/utils/helpers.ts  # Refactor with validation
+/cx-test src/api/users.ts          # Generate verified tests
+/cx-brainstorm how to handle auth  # Dual-AI brainstorming
+/cx-models gpt-5.4                 # Switch to GPT-5.4
+```
 
 ## How It Works
 

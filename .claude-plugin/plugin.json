@@ -1,0 +1,13 @@
+{
+  "name": "clauxsync",
+  "version": "1.0.0",
+  "description": "Dual AI workflow — sync Claude Code with OpenAI Codex via OAuth. Manus-style planning, todo.md tracking, and smart AI role assignment.",
+  "author": {
+    "name": "AI Sync Club",
+    "url": "https://portfolio.aisyncclub.com/"
+  },
+  "homepage": "https://github.com/aisyncclub/ClauxSync",
+  "repository": "https://github.com/aisyncclub/ClauxSync",
+  "license": "MIT",
+  "keywords": ["codex", "openai", "dual-ai", "planning", "todo", "manus", "co-commands", "oauth"]
+}
