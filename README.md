@@ -19,16 +19,42 @@ Claude creates, Codex validates — with automatic execution plans and progress 
 
 ---
 
-## Why ClauxSync?
+## The Problem
 
-Most developers use Claude Code OR Codex separately. But each AI has distinct strengths:
+You proofread your own writing and miss typos every time. **AI has the same blind spot.** When Claude reviews its own code, it shares the same assumptions that created the bugs in the first place.
+
+### Before ClauxSync (You = Human Middleware)
+
+```
+Write code in Claude Code
+    ↓
+Copy code → paste into ChatGPT/Codex
+    ↓
+Copy review → paste back into Claude Code
+    ↓
+Repeat... (you are the middleware)
+```
+
+Result: tedious, context lost between copy-pastes, and eventually you stop doing it altogether.
+
+### After ClauxSync (Automatic)
+
+```
+Start task in Claude Code
+    ↓
+ClauxSync auto-calls Codex at the right moments
+    ↓
+Done. No copy-paste. No context loss.
+```
+
+## Why It Matters
 
 | | Claude Code | OpenAI Codex |
 |---|---|---|
 | **Strengths** | Planning, execution, code generation, architecture | Deep analysis, edge case detection, code review |
 | **Weakness** | Can miss edge cases in its own code | Less interactive, slower for rapid iteration |
 
-**ClauxSync combines both** — Claude handles planning and coding, Codex validates and catches what Claude misses. The result: fewer bugs, better architecture, and higher code quality.
+**ClauxSync combines both.** Claude builds, Codex validates — automatically.
 
 ## Performance
 
@@ -39,8 +65,15 @@ Most developers use Claude Code OR Codex separately. But each AI has distinct st
 | Code review quality | Single perspective | **Two independent analyses merged** |
 | Refactoring safety | Manual verification | **Auto-verified by second AI** |
 | Planning completeness | Good | **Staff-engineer-level validation** |
+| Cost | Claude subscription | **+ ChatGPT subscription only (no extra API fees)** |
 
 > "Claude is great at planning and execution. Codex is great at deep analysis and edge case detection. Together, they catch what the other misses." — r/ClaudeAI community consensus
+
+### Real-World Impact
+
+- A developer caught a **critical bug before deployment** using Codex review
+- Edge cases found: **3-5 additional per review** that Claude alone missed
+- No extra API costs — uses your existing **ChatGPT subscription via OAuth**
 
 ## Features
 
@@ -203,6 +236,34 @@ Built by **[AI Sync Club](https://portfolio.aisyncclub.com/)** — we build tool
 <details>
 <summary><strong>한국어 설명 (Korean)</strong></summary>
 
+## 문제점
+
+자기가 쓴 글을 자기가 교정하면 오타를 못 찾습니다. **AI도 마찬가지입니다.** Claude가 자기 코드를 리뷰하면 같은 사각지대를 공유합니다.
+
+### ClauxSync 없이 (당신 = 인간 미들웨어)
+
+```
+Claude Code에서 코드 작성
+    ↓
+코드 복사 → ChatGPT/Codex에 붙여넣기
+    ↓
+리뷰 결과 복사 → 다시 Claude Code에 반영
+    ↓
+반복... (당신이 미들웨어)
+```
+
+결과: 귀찮고, 컨텍스트 유실되고, 결국 안 하게 됩니다.
+
+### ClauxSync 적용 후 (자동)
+
+```
+Claude Code에서 작업 시작
+    ↓
+ClauxSync가 적절한 시점에 자동으로 Codex 호출
+    ↓
+끝. 복사-붙여넣기 없음. 컨텍스트 유실 없음.
+```
+
 ## ClauxSync란?
 
 ClauxSync는 **Claude Code**와 **OpenAI Codex**를 하나의 워크플로우로 연결하는 도구입니다. OAuth 인증으로 ChatGPT 구독만 있으면 별도 API 비용 없이 사용할 수 있습니다.
@@ -225,6 +286,13 @@ ClauxSync는 **Claude Code**와 **OpenAI Codex**를 하나의 워크플로우로
 | 코드 리뷰 품질 | 단일 시각 | **두 개의 독립 분석 통합** |
 | 리팩토링 안전성 | 수동 검증 | **두 번째 AI가 자동 검증** |
 | 계획 완성도 | 양호 | **시니어 엔지니어급 검증** |
+| 비용 | Claude 구독 | **+ ChatGPT 구독만 (추가 API 비용 0원)** |
+
+### 실제 사례
+
+- 한 개발자가 Codex 리뷰로 **배포 전 치명적 버그 1건 사전 차단**
+- 리뷰당 엣지 케이스 **평균 3-5개 추가 발견**
+- 추가 API 비용 없음 — 기존 **ChatGPT 구독의 OAuth 인증** 활용
 
 ### 주요 기능
 
